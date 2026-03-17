@@ -44,14 +44,12 @@ spec:
 kubectl apply -f ingress-service.yaml
 kubectl -n ingress get all
 ```
----
 ### Add Host Entries
 Map your node IP to hostnames for testing:
 ```bash
 echo "10.10.0.2 blue.local" | sudo tee -a /etc/hosts
 echo "10.10.0.2 green.local" | sudo tee -a /etc/hosts
 ```
----
 ### Deploy Blue and Green
 Apply manifests:
 - `blue-deployment.yaml` → “Hello from BLUE”  
