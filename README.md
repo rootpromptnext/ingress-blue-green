@@ -72,15 +72,15 @@ curl http://green.local:30080
 You’ll see responses from each environment separately.
 
 ### Switch Traffic
-When ready to promote **Green**:
-- **Option A:** Update `demo-service` selector to `version: green`.  
-- **Option B:** Change `/etc/hosts` so `demo.local` points to green ingress.  
 
-Rollback is instant: switch back to **Blue**.
-  
-### Option A: Update `demo-service` Selector
+## Testing Blue‑Green Deployment with Demo Service
 
-### Initial `demo-service.yaml` (pointing to Blue)
+Once Blue and Green environments are deployed and tested individually (`blue.local`, `green.local`), you can introduce a **demo service and ingress** to act as the single production entry point (`demo.local`). This allows you to flip traffic between Blue and Green easily.
+
+---
+
+## Demo Service (initially pointing to Blue)
+
 ```yaml
 apiVersion: v1
 kind: Service
@@ -89,28 +89,71 @@ metadata:
 spec:
   selector:
     app: demo
-    version: blue   # currently pointing to BLUE
+    version: blue   # initially BLUE
   ports:
   - port: 80
     targetPort: 80
 ```
 
-### Change to Green
+### Demo Ingress
+
 ```yaml
-apiVersion: v1
-kind: Service
+apiVersion: networking.k8s.io/v1
+kind: Ingress
 metadata:
-  name: demo-service
+  name: demo-ingress
+  namespace: default
+spec:
+  rules:
+  - host: demo.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: demo-service
+            port:
+              number: 80
+```
+
+---
+
+### Apply and Configure Hosts
+
+```bash
+kubectl apply -f demo-service.yaml
+kubectl apply -f demo-ingress.yaml
+```
+
+Add host entry:
+```bash
+echo "10.10.0.2 demo.local" | sudo tee -a /etc/hosts
+```
+
+---
+
+### Test Initial Traffic
+
+```bash
+curl http://demo.local:30080
+Hello from BLUE
+```
+
+---
+
+### Promote Green
+
+Edit `demo-service.yaml` selector to point to Green:
+
+```yaml
 spec:
   selector:
     app: demo
     version: green   # switched to GREEN
-  ports:
-  - port: 80
-    targetPort: 80
 ```
 
-Apply the change:
+Re‑apply:
 ```bash
 kubectl apply -f demo-service.yaml
 ```
@@ -121,68 +164,30 @@ curl http://demo.local:30080
 Hello from GREEN
 ```
 
-Rollback (switch back to Blue):
-```yaml
-selector:
-  app: demo
-  version: blue
-```
-```bash
-kubectl apply -f demo-service.yaml
-curl http://demo.local:30080
-Hello from BLUE
-```
-
 ---
-
-### Option B: Change `/etc/hosts` Mapping
-
-### Initial `/etc/hosts`
-```text
-10.10.0.2 blue.local
-10.10.0.2 green.local
-10.10.0.2 demo.local   # pointing to BLUE ingress
-```
-
-### Switch to Green
-Edit `/etc/hosts`:
-```bash
-sudo sed -i 's/blue.local/demo.local/' /etc/hosts
-```
-Or explicitly:
-```bash
-echo "10.10.0.2 green.local demo.local" | sudo tee -a /etc/hosts
-```
-
-Test:
-```bash
-curl http://demo.local:30080
-Hello from GREEN
-```
-
-Rollback:
-```bash
-echo "10.10.0.2 blue.local demo.local" | sudo tee -a /etc/hosts
-curl http://demo.local:30080
-Hello from BLUE
-```
-
----
-
-### Rollback Demo Section
-
-### Promote Green
-```bash
-kubectl apply -f demo-service.yaml   # Option A
-# or update /etc/hosts for demo.local -> green.local   # Option B
-curl http://demo.local:30080
-Hello from GREEN
-```
 
 ### Rollback to Blue
+
+If needed, change the selector back:
+
+```yaml
+spec:
+  selector:
+    app: demo
+    version: blue
+```
+
+Re‑apply:
 ```bash
-kubectl apply -f demo-service.yaml   # reset selector to blue
-# or update /etc/hosts for demo.local -> blue.local
+kubectl apply -f demo-service.yaml
+```
+
+Test:
+```bash
 curl http://demo.local:30080
 Hello from BLUE
 ```
+
+
+
+
