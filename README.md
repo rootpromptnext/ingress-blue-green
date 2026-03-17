@@ -117,8 +117,6 @@ You’ll see responses from each environment separately.
 
 Once Blue and Green environments are deployed and tested individually (`blue.local`, `green.local`), you can introduce a **demo service and ingress** to act as the single production entry point (`demo.local`). This allows you to flip traffic between Blue and Green easily.
 
----
-
 ## Demo Service (initially pointing to Blue)
 
 ```yaml
@@ -157,8 +155,6 @@ spec:
               number: 80
 ```
 
----
-
 ### Apply and Configure Hosts
 
 ```bash
@@ -171,16 +167,12 @@ Add host entry:
 echo "10.10.0.2 demo.local" | sudo tee -a /etc/hosts
 ```
 
----
-
 ### Test Initial Traffic
 
 ```bash
 curl http://demo.local:30080
 Hello from BLUE
 ```
-
----
 
 ### Promote Green
 
@@ -203,8 +195,6 @@ Test:
 curl http://demo.local:30080
 Hello from GREEN
 ```
-
----
 
 ### Rollback to Blue
 
@@ -259,7 +249,6 @@ Check:
 ```bash
 kubectl get pods -n ingress-nginx
 ```
-
 
 ### Expose Ingress
 On EKS, the ingress controller automatically creates a **LoadBalancer Service**:
