@@ -228,6 +228,94 @@ curl http://demo.local:30080
 Hello from BLUE
 ```
 
+## Running Blue‑Green Deployment on Amazon EKS
 
+### Create an EKS Cluster
+Provision a cluster with `eksctl`:
+```bash
+eksctl create cluster \
+  --name ingress-blue-green \
+  --region us-east-1 \
+  --nodes 3
+```
+
+Configure `kubectl`:
+```bash
+aws eks update-kubeconfig --region us-east-1 --name ingress-blue-green
+kubectl get nodes
+```
+
+### Install NGINX Ingress Controller
+Unlike MicroK8s, EKS doesn’t ship with ingress by default. Install via Helm:
+
+```bash
+helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+helm repo update
+helm install ingress-nginx ingress-nginx/ingress-nginx \
+  --namespace ingress-nginx --create-namespace
+```
+
+Check:
+```bash
+kubectl get pods -n ingress-nginx
+```
+
+
+### Expose Ingress
+On EKS, the ingress controller automatically creates a **LoadBalancer Service**:
+
+```bash
+kubectl get svc -n ingress-nginx
+```
+
+You’ll see an `EXTERNAL-IP` (AWS ELB DNS name). Use this instead of `demo.local:30080`.
+
+
+### Host Mapping
+For local testing, map the ELB DNS name to `demo.local` in `/etc/hosts`:
+
+```bash
+echo "<ELB-DNS-NAME> demo.local" | sudo tee -a /etc/hosts
+```
+
+You can also keep `blue.local` and `green.local` mapped to the same ELB if you want to test both environments separately.
+
+
+### Deploy Blue and Green
+Apply the same manifests you used for MicroK8s:
+
+```bash
+kubectl apply -f blue-deployment.yaml
+kubectl apply -f green-deployment.yaml
+kubectl apply -f blue-ingress.yaml
+kubectl apply -f green-ingress.yaml
+kubectl apply -f demo-service.yaml
+kubectl apply -f demo-ingress.yaml
+```
+
+### Test and Switch Traffic
+Test:
+```bash
+curl http://demo.local
+Hello from BLUE
+```
+
+### Promote Green (Option A):
+- Edit `demo-service.yaml` selector → `version: green`
+- Re‑apply:
+  ```bash
+  kubectl apply -f demo-service.yaml
+  curl http://demo.local
+  Hello from GREEN
+  ```
+
+### Rollback:
+- Change selector back to `version: blue`
+- Re‑apply:
+  ```bash
+  kubectl apply -f demo-service.yaml
+  curl http://demo.local
+  Hello from BLUE
+  ```
 
 
