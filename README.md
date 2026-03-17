@@ -1,3 +1,43 @@
+```text
+                +-------------------+
+                |   Client Request  |
+                +-------------------+
+                          |
+                          v
+                +-------------------+
+                |   Ingress (NGINX) |
+                +-------------------+
+                          |
+                          v
+                +-------------------+
+                |   demo.local      |
+                |   (Demo Service)  |
+                +-------------------+
+                          |
+          ---------------------------------
+          |                               |
+          v                               v
++-------------------+           +-------------------+
+|  Blue Service     |           |  Green Service    |
+| (Production Pods) |           | (New Version Pods)|
++-------------------+           +-------------------+
+          |                               |
+          v                               v
++-------------------+           +-------------------+
+|  Blue Deployment  |           |  Green Deployment |
+| "Hello from BLUE" |           | "Hello from GREEN"|
++-------------------+           +-------------------+
+```
+
+### What is a Blue‑Green Deployment?
+
+- **Blue (Current Production):** The stable version of your application that all traffic initially flows to.  
+- **Green (New Version):** A parallel environment running the updated application, isolated from production traffic until promotion.  
+- **Demo Service/Ingress:** Provides a single entry point (`demo.local`) that can be switched between Blue and Green by editing the service selector.  
+- **Traffic Switching:** Unlike Canary (which splits traffic), Blue‑Green sends 100% of traffic to either Blue or Green. Switching is binary and immediate.  
+- **Purpose:** Allows you to test the new version (Green) side‑by‑side with Blue, then flip production traffic when ready.  
+- **Rollback Safety:** If issues occur, you can instantly revert traffic back to Blue by changing the service selector.  
+
 ### Install MicroK8s
 
 Either run the commands manually:
