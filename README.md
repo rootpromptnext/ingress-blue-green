@@ -78,5 +78,111 @@ When ready to promote **Green**:
 
 Rollback is instant: switch back to **Blue**.
   
+### Option A: Update `demo-service` Selector
 
-Do you want me to also add a **rollback demo section** (like we did for Canary) with actual `kubectl` commands and expected curl outputs, so your README shows the full lifecycle?
+### Initial `demo-service.yaml` (pointing to Blue)
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-service
+spec:
+  selector:
+    app: demo
+    version: blue   # currently pointing to BLUE
+  ports:
+  - port: 80
+    targetPort: 80
+```
+
+### Change to Green
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: demo-service
+spec:
+  selector:
+    app: demo
+    version: green   # switched to GREEN
+  ports:
+  - port: 80
+    targetPort: 80
+```
+
+Apply the change:
+```bash
+kubectl apply -f demo-service.yaml
+```
+
+Test:
+```bash
+curl http://demo.local:30080
+Hello from GREEN
+```
+
+Rollback (switch back to Blue):
+```yaml
+selector:
+  app: demo
+  version: blue
+```
+```bash
+kubectl apply -f demo-service.yaml
+curl http://demo.local:30080
+Hello from BLUE
+```
+
+---
+
+### Option B: Change `/etc/hosts` Mapping
+
+### Initial `/etc/hosts`
+```text
+10.10.0.2 blue.local
+10.10.0.2 green.local
+10.10.0.2 demo.local   # pointing to BLUE ingress
+```
+
+### Switch to Green
+Edit `/etc/hosts`:
+```bash
+sudo sed -i 's/blue.local/demo.local/' /etc/hosts
+```
+Or explicitly:
+```bash
+echo "10.10.0.2 green.local demo.local" | sudo tee -a /etc/hosts
+```
+
+Test:
+```bash
+curl http://demo.local:30080
+Hello from GREEN
+```
+
+Rollback:
+```bash
+echo "10.10.0.2 blue.local demo.local" | sudo tee -a /etc/hosts
+curl http://demo.local:30080
+Hello from BLUE
+```
+
+---
+
+### Rollback Demo Section
+
+### Promote Green
+```bash
+kubectl apply -f demo-service.yaml   # Option A
+# or update /etc/hosts for demo.local -> green.local   # Option B
+curl http://demo.local:30080
+Hello from GREEN
+```
+
+### Rollback to Blue
+```bash
+kubectl apply -f demo-service.yaml   # reset selector to blue
+# or update /etc/hosts for demo.local -> blue.local
+curl http://demo.local:30080
+Hello from BLUE
+```
